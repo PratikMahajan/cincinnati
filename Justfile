@@ -42,7 +42,7 @@ test: format
 	#!/usr/bin/env bash
 	set -e
 	export RUST_BACKTRACE=1 RUST_LOG="graph-builder=trace,cincinnati=trace,dkregistry=trace"
-	cargo test --all
+	cargo test --all -- --nocapture
 
 _test component cargoargs='--features test-net,test-net-private' rustcargs='--ignored':
 	#!/usr/bin/env bash
