@@ -27,6 +27,8 @@ use std::{collections, fmt};
 
 pub use daggy::{self, WouldCycle};
 
+use log::warn;
+
 pub const CONTENT_TYPE: &str = "application/json";
 const EXPECT_NODE_WEIGHT: &str = "all exisitng nodes to have a weight (release)";
 
@@ -71,7 +73,11 @@ impl Release {
     pub fn manifestref(&self) -> Result<&String, Error> {
         let digestkey = String::from("io.openshift.upgrades.graph.release.manifestref");
         let digest = self.metadata.get(&digestkey);
-        Ok(digest.map(|d| d).unwrap())
+        let manifestref = digest.map(|d| d);
+        if manifestref.is_none() {
+            return Err(Error::msg("manifestref missing for release"));
+        }
+        Ok(manifestref.unwrap())
     }
 }
 
@@ -166,10 +172,19 @@ impl Graph {
         R: Into<Release>,
     {
         let release = release.into();
+        let empty_str = String::from("");
+        if release.manifestref().is_err() {
+            return Err(Error::msg("not a complete release"));
+        }
         match self.find_by_version(&release.version()) {
             Some(id) => {
                 let node = self.dag.node_weight_mut(id.0).expect(EXPECT_NODE_WEIGHT);
                 // check if release digest and node digest are same
+                warn!(
+                    "manifest refs: release: {}, node: {}",
+                    release.manifestref().unwrap(),
+                    node.manifestref().unwrap()
+                );
                 if release.manifestref().unwrap() != node.manifestref().unwrap() {
                     bail!(
                         "mismatched manifest ref for release {}: {}, {}",
