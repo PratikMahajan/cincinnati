@@ -21,6 +21,7 @@ pub mod plugins;
 use commons::prelude_errors::*;
 use daggy::petgraph::visit::{IntoNodeReferences, NodeRef};
 use daggy::{Dag, EdgeIndex, Walker};
+use log::warn;
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 use std::{collections, fmt};
@@ -201,7 +202,13 @@ impl Graph {
                 let node = self.dag.node_weight_mut(id.0).expect(EXPECT_NODE_WEIGHT);
                 if let Release::Concrete(_) = node {
                     // check if release digest and node digest are same
+                    warn!(
+                        "manifests ref release:{}, node:{}",
+                        release.manifestref().unwrap(),
+                        node.manifestref().unwrap()
+                    );
                     if release.manifestref().unwrap() != node.manifestref().unwrap() {
+                        warn!("bailing out due to mismatch");
                         bail!(
                             "mismatched manifest ref for concrete release {}: {}, {}",
                             release.version(),
