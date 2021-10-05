@@ -25,8 +25,20 @@ pub mod prelude_errors {
 }
 
 use actix_web::http::{header, HeaderMap};
+use std::collections::HashMap;
 use std::collections::HashSet;
 use url::form_urlencoded;
+
+lazy_static! {
+    /// list of cincinnati versions
+    pub static ref CINCINNATI_VERSION: HashMap<&'static str, i32> =
+        [("application/vnd.redhat.cincinnati.v1+json", 1)]
+            .iter()
+            .cloned()
+            .collect();
+    /// minimum cincinnati version supported
+    pub static ref MIN_CINCINNATI_VERSION: &'static str = "application/vnd.redhat.cincinnati.v1+json";
+}
 
 /// Strip all but one leading slash and all trailing slashes
 pub fn parse_path_prefix<S>(path_prefix: S) -> String
@@ -94,34 +106,46 @@ pub fn ensure_query_params(
 /// Make sure the client can accept the provided media type.
 pub fn validate_content_type(
     headers: &HeaderMap,
-    content_type: &'static str,
-) -> Result<(), GraphError> {
+    mut content_type: Vec<actix_web::http::HeaderValue>,
+) -> Result<String, GraphError> {
     let header_value = match headers.get(header::ACCEPT) {
-        None => return Ok(()),
+        None => {
+            let minimum_version = MIN_CINCINNATI_VERSION.to_string();
+            return Ok(minimum_version);
+        }
         Some(v) => v,
     };
 
-    let full_type = header::HeaderValue::from_static(content_type);
     let wildcard = header::HeaderValue::from_static("*");
     let double_wildcard = header::HeaderValue::from_static("*/*");
-    let top_type = content_type.split("/").next().unwrap_or("");
-    let top_type_wildcard = header::HeaderValue::from_str(&format!("{}/*", top_type));
-    assert!(
-        top_type_wildcard.is_ok(),
-        "could not form top-type wildcard from {}",
-        top_type
-    );
 
-    let acceptable_content_types: Vec<actix_web::http::HeaderValue> = vec![
-        full_type,
-        wildcard,
-        double_wildcard,
-        top_type_wildcard.unwrap(),
-    ];
+    let mut top_types: Vec<actix_web::http::HeaderValue> = content_type
+        .iter()
+        .map(|ct| {
+            let top_type = ct.to_str().unwrap_or("").split("/").next().unwrap_or("");
+            let top_type_wildcard = header::HeaderValue::from_str(&format!("{}/*", top_type));
+            assert!(
+                top_type_wildcard.is_ok(),
+                "could not form top-type wildcard from {}",
+                top_type
+            );
+            top_type_wildcard.unwrap()
+        })
+        .collect();
+
+    let mut acceptable_content_types: Vec<actix_web::http::HeaderValue> =
+        vec![wildcard, double_wildcard];
+    acceptable_content_types.append(&mut content_type);
+    acceptable_content_types.append(&mut top_types);
 
     // FIXME: this is not a full-blown Accept parser
     if acceptable_content_types.iter().any(|c| c == header_value) {
-        Ok(())
+        let minimum_version: String = MIN_CINCINNATI_VERSION.to_string();
+        let accept = header::HeaderValue::to_str(header_value);
+        return match accept {
+            Ok(a) => Ok(a.parse().unwrap()),
+            Err(_e) => Ok(minimum_version),
+        };
     } else {
         Err(GraphError::InvalidContentType)
     }
@@ -172,19 +196,44 @@ mod tests {
     #[test]
     fn test_validate_content_type() {
         let mut headers = actix_web::http::HeaderMap::new();
-        validate_content_type(&headers, "application/json").unwrap(); // if the request leaves Accept empty, we can return whatever we want
+
+        let content_type: Vec<actix_web::http::HeaderValue> =
+            vec![header::HeaderValue::from_str("application/json").unwrap()];
+        let version = validate_content_type(&headers, content_type.clone()).unwrap(); // if the request leaves Accept empty, we return the minimum supported cincinnati version
+        assert_eq!(version, MIN_CINCINNATI_VERSION.to_string());
+
         headers.insert(
             header::ACCEPT,
             //"application/json, text/*; q=0.2".parse().unwrap(), // prefer JSON, but also accept any text/* after an 80% markdown in quality.  FIXME: needs a smarter parser in validate_content_type
             "application/json".parse().unwrap(),
         );
-        validate_content_type(&headers, "application/json").unwrap();
+        let version = validate_content_type(&headers, content_type.clone()).unwrap();
+        assert_eq!(version, "application/json");
+
         headers.insert(
             // FIXME: drop once validate_content_type gets a smarter parser and the previous insert can include the text/* entry
             header::ACCEPT,
             "text/*".parse().unwrap(),
         );
-        validate_content_type(&headers, "text/plain").unwrap();
-        validate_content_type(&headers, "image/png").unwrap_err();
+        let text_type: Vec<actix_web::http::HeaderValue> =
+            vec![header::HeaderValue::from_str("text/plain").unwrap()];
+        let version = validate_content_type(&headers, text_type).unwrap();
+        assert_eq!(version, "text/*");
+
+        let image_type: Vec<actix_web::http::HeaderValue> =
+            vec![header::HeaderValue::from_str("image/png").unwrap()];
+        validate_content_type(&headers, image_type).unwrap_err();
+
+        headers.insert(
+            // FIXME: drop once validate_content_type gets a smarter parser and the previous insert can include the text/* entry
+            header::ACCEPT,
+            "application/vnd.redhat.cincinnati.v1+json".parse().unwrap(),
+        );
+        let cincinnati_v1: Vec<actix_web::http::HeaderValue> =
+            vec![
+                header::HeaderValue::from_str("application/vnd.redhat.cincinnati.v1+json").unwrap(),
+            ];
+        let version = validate_content_type(&headers, cincinnati_v1).unwrap(); // if the request leaves Accept empty, we can return whatever we want
+        assert_eq!(version, "application/vnd.redhat.cincinnati.v1+json");
     }
 }
