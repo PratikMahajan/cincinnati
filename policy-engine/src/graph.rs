@@ -13,7 +13,7 @@ use opentelemetry::{
     Context as ot_context,
 };
 use prometheus::{histogram_opts, Histogram, IntCounterVec, Opts, Registry};
-use serde_json;
+use serde_json::{self, json, Value};
 use std::collections::HashMap;
 
 lazy_static! {
@@ -67,9 +67,12 @@ async fn _index(
     let mandatory_params = &app_data.mandatory_params;
     commons::ensure_query_params(mandatory_params, req.query_string())?;
 
-    let plugin_params = Query::<HashMap<String, String>>::from_query(req.query_string())
+    let mut plugin_params = Query::<HashMap<String, String>>::from_query(req.query_string())
         .map(|query| query.into_inner())
         .map_err(|e| commons::GraphError::InvalidParams(e.to_string()))?;
+
+    let cinci_version = commons::get_version(req.headers());
+    plugin_params.insert(String::from("version"), cinci_version.to_string());
 
     let timer = GRAPH_SERVE_HIST.start_timer();
 
@@ -144,9 +147,30 @@ where
     let graph_json = serde_json::to_string(&internal_io.graph)
         .map_err(|e| GraphError::FailedJsonOut(e.to_string()))?;
 
+    let v =
+        serde_json::from_str(&graph_json).map_err(|e| GraphError::FailedJsonOut(e.to_string()))?;
+    let version: i32 = match internal_io.parameters.get("version") {
+        None => *commons::MIN_CINCI_VERSION as i32,
+        Some(v) => v.parse::<i32>().unwrap(),
+    };
+
+    let updated_json = add_version_information(&v, &version);
+
     Ok(HttpResponse::Ok()
         .content_type(CONTENT_TYPE)
-        .body(graph_json))
+        .body(updated_json.to_string()))
+}
+
+/// add version information to the graph json
+fn add_version_information(v: &Value, version: &i32) -> Value {
+    match v {
+        Value::Object(m) => {
+            let mut m = m.clone();
+            m.insert("version".to_string(), json!(version));
+            Value::Object(m)
+        }
+        v => v.clone(),
+    }
 }
 
 #[cfg(test)]

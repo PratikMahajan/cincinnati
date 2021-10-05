@@ -25,8 +25,20 @@ pub mod prelude_errors {
 }
 
 use actix_web::http::{header, HeaderMap};
+use std::collections::HashMap;
 use std::collections::HashSet;
 use url::form_urlencoded;
+
+lazy_static! {
+    /// list of cincinnati versions
+    pub static ref CINCI_VERSION: HashMap<&'static str, i32> =
+        [("application/vnd.redhat.cincinnati.v1+json", 1)]
+            .iter()
+            .cloned()
+            .collect();
+    /// minimum cincinnati version supported
+    pub static ref MIN_CINCI_VERSION: i32 = 1;
+}
 
 /// Strip all but one leading slash and all trailing slashes
 pub fn parse_path_prefix<S>(path_prefix: S) -> String
@@ -104,6 +116,10 @@ pub fn validate_content_type(
     let full_type = header::HeaderValue::from_static(content_type);
     let wildcard = header::HeaderValue::from_static("*");
     let double_wildcard = header::HeaderValue::from_static("*/*");
+    let mut cinci_versions: Vec<actix_web::http::HeaderValue> = CINCI_VERSION
+        .keys()
+        .map(|val| header::HeaderValue::from_static(val))
+        .collect();
     let top_type = content_type.split("/").next().unwrap_or("");
     let top_type_wildcard = header::HeaderValue::from_str(&format!("{}/*", top_type));
     assert!(
@@ -112,18 +128,39 @@ pub fn validate_content_type(
         top_type
     );
 
-    let acceptable_content_types: Vec<actix_web::http::HeaderValue> = vec![
+    let mut acceptable_content_types: Vec<actix_web::http::HeaderValue> = vec![
         full_type,
         wildcard,
         double_wildcard,
         top_type_wildcard.unwrap(),
     ];
+    acceptable_content_types.append(&mut cinci_versions);
 
     // FIXME: this is not a full-blown Accept parser
     if acceptable_content_types.iter().any(|c| c == header_value) {
         Ok(())
     } else {
         Err(GraphError::InvalidContentType)
+    }
+}
+
+/// get the requested version from accept header
+pub fn get_version(headers: &HeaderMap) -> i32 {
+    let minimum_version: i32 = *MIN_CINCI_VERSION as i32;
+    let header_value = match headers.get(header::ACCEPT) {
+        None => return minimum_version.clone(),
+        Some(v) => v,
+    };
+    let accept = header::HeaderValue::to_str(header_value);
+
+    let accept = match accept {
+        Ok(a) => a,
+        Err(_e) => return minimum_version.clone(),
+    };
+
+    match CINCI_VERSION.get(accept) {
+        Some(version) => *version,
+        None => minimum_version.clone(),
     }
 }
 
