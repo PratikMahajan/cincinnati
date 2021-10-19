@@ -30,3 +30,87 @@ impl VersionedGraph {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate as cincinnati;
+    use std::collections::HashMap;
+
+    use super::*;
+    use cincinnati::testing::{generate_custom_graph, TestMetadata};
+    use commons::testing::init_runtime;
+    use commons::MIN_CINCINNATI_VERSION;
+
+    fn get_min_version() -> Fallible<i32> {
+        match CINCINNATI_VERSION.get(*MIN_CINCINNATI_VERSION) {
+            Some(version) => Ok(*version),
+            None => bail!("error parsing minimum cincinnati version"),
+        }
+    }
+
+    #[test]
+    fn min_version_if_missing() -> Fallible<()> {
+        let runtime = init_runtime()?;
+
+        let input_graph: cincinnati::Graph = {
+            let metadata: TestMetadata = vec![(1, [].iter().cloned().collect())];
+            generate_custom_graph("image", metadata, None)
+        };
+
+        let versioned_graph = VersionedGraph::versioned_graph(&InternalIO {
+            graph: input_graph,
+            parameters: Default::default(),
+        })
+        .unwrap();
+
+        assert_eq!(versioned_graph.version, get_min_version().unwrap());
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_min_on_unsupported() -> Fallible<()> {
+        let runtime = init_runtime()?;
+
+        let input_graph: cincinnati::Graph = {
+            let metadata: TestMetadata = vec![(1, [].iter().cloned().collect())];
+            generate_custom_graph("image", metadata, None)
+        };
+
+        let mut plugin_params: HashMap<String, String> = HashMap::new();
+        plugin_params.insert(String::from("version"), "application/json".to_string());
+
+        let versioned_graph = VersionedGraph::versioned_graph(&InternalIO {
+            graph: input_graph,
+            parameters: plugin_params,
+        })
+        .unwrap();
+
+        assert_eq!(versioned_graph.version, get_min_version().unwrap());
+        Ok(())
+    }
+
+    #[test]
+    fn ensure_version_1() -> Fallible<()> {
+        let runtime = init_runtime()?;
+
+        let input_graph: cincinnati::Graph = {
+            let metadata: TestMetadata = vec![(1, [].iter().cloned().collect())];
+            generate_custom_graph("image", metadata, None)
+        };
+
+        let mut plugin_params: HashMap<String, String> = HashMap::new();
+        plugin_params.insert(
+            String::from("version"),
+            "application/vnd.redhat.cincinnati.v1+json".to_string(),
+        );
+
+        let versioned_graph = VersionedGraph::versioned_graph(&InternalIO {
+            graph: input_graph,
+            parameters: plugin_params,
+        })
+        .unwrap();
+
+        assert_eq!(versioned_graph.version, 1);
+        Ok(())
+    }
+}
