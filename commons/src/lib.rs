@@ -206,6 +206,7 @@ mod tests {
 
     #[test]
     fn test_validate_content_type() {
+        // Test for empty header
         // No accept value provided with header, server accepts `application/json` and defaults to `application/json`
         let mut headers = actix_web::http::HeaderMap::new();
         let accept_default = header::HeaderValue::from_str("application/json").unwrap();
@@ -217,6 +218,7 @@ mod tests {
         .unwrap(); // if the request leaves Accept empty, we return the minimum supported cincinnati version as that's the lowest version we support
         assert_eq!(version, MIN_CINCINNATI_VERSION.to_string());
 
+        // Support old clients with older cincinnati config.
         // `application/json` provided with header, server accepts `application/json` and defaults to `application/json`
         headers.insert(
             header::ACCEPT,
@@ -241,12 +243,14 @@ mod tests {
         .unwrap();
         assert_eq!(version, "application/json");
 
+        // Incompatible Accept header
         // `image/png` provided with header, server accepts `application/json` and defaults to `application/json`
         let image_type: Vec<actix_web::http::HeaderValue> =
             vec![header::HeaderValue::from_str("image/png").unwrap()];
         //server should throw error on non-supported ACCEPT
         validate_content_type(&headers, image_type, accept_default.clone()).unwrap_err();
 
+        // Check latest version with all accepted version types
         //`application/vnd.redhat.cincinnati.v1+json` provided with header, server accepts
         //`application/vnd.redhat.cincinnati.v1+json` and defaults to `application/json`
         headers.insert(
@@ -262,6 +266,7 @@ mod tests {
         // Server returns the response with content_type `application/vnd.redhat.cincinnati.v1+json`
         assert_eq!(version, "application/vnd.redhat.cincinnati.v1+json");
 
+        // Support old clients with proactive support config.
         // `application/json` provided with header, server accepts `application/vnd.redhat.cincinnati.v1+json`
         // and defaults to `application/json`
         headers.insert(header::ACCEPT, "application/json".parse().unwrap());
@@ -270,6 +275,7 @@ mod tests {
         // Server returns the response with content_type `application/json`
         assert_eq!(version, "application/json");
 
+        // Test function with non `application` input. Input is valid for function.
         //`text/*` provided with header, server accepts `text/plain` and defaults to `text/plain`
         headers.insert(
             // FIXME: drop once validate_content_type gets a smarter parser and the previous insert can include the text/* entry

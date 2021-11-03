@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn min_version_if_missing() -> Fallible<()> {
-        let runtime = init_runtime()?;
+        let _ = init_runtime()?;
 
         let input_graph: cincinnati::Graph = {
             let metadata: TestMetadata = vec![(1, [].iter().cloned().collect())];
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn ensure_min_on_unsupported() -> Fallible<()> {
-        let runtime = init_runtime()?;
+        let _ = init_runtime()?;
 
         let input_graph: cincinnati::Graph = {
             let metadata: TestMetadata = vec![(1, [].iter().cloned().collect())];
@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn ensure_version_1() -> Fallible<()> {
-        let runtime = init_runtime()?;
+        let _ = init_runtime()?;
 
         let input_graph: cincinnati::Graph = {
             let metadata: TestMetadata = vec![(1, [].iter().cloned().collect())];
@@ -99,10 +99,7 @@ mod tests {
         };
 
         let mut plugin_params: HashMap<String, String> = HashMap::new();
-        plugin_params.insert(
-            String::from("version"),
-            "application/vnd.redhat.cincinnati.v1+json".to_string(),
-        );
+        plugin_params.insert(String::from("version"), MIN_CINCINNATI_VERSION.to_string());
 
         let versioned_graph = VersionedGraph::versioned_graph(&InternalIO {
             graph: input_graph,
