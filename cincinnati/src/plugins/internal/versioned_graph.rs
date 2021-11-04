@@ -2,12 +2,12 @@ use self::cincinnati::plugins::prelude_plugin_impl::*;
 use crate as cincinnati;
 use commons::{CINCINNATI_VERSION, MIN_CINCINNATI_VERSION};
 
-#[derive(Debug, Serialize, Deserialize, SmartDefault)]
+#[derive(Debug, Serialize, Deserialize, SmartDefault, PartialEq)]
 #[serde(default)]
 pub struct VersionedGraph {
-    version: i32,
+    pub version: i32,
     #[serde(flatten)]
-    graph: cincinnati::Graph,
+    pub graph: cincinnati::Graph,
 }
 
 impl VersionedGraph {

@@ -206,6 +206,12 @@ mod tests {
 
     #[test]
     fn test_validate_content_type() {
+        let most_recent_version = "application/vnd.redhat.cincinnati.v1+json";
+        let all_supported_versions: Vec<actix_web::http::HeaderValue> = CINCINNATI_VERSION
+            .keys()
+            .map(|val| header::HeaderValue::from_static(val))
+            .collect();
+
         // Test for empty header
         // No accept value provided with header, server accepts `application/json` and defaults to `application/json`
         let mut headers = actix_web::http::HeaderMap::new();
@@ -251,27 +257,25 @@ mod tests {
         validate_content_type(&headers, image_type, accept_default.clone()).unwrap_err();
 
         // Check latest version with all accepted version types
-        //`application/vnd.redhat.cincinnati.v1+json` provided with header, server accepts
-        //`application/vnd.redhat.cincinnati.v1+json` and defaults to `application/json`
-        headers.insert(
-            header::ACCEPT,
-            "application/vnd.redhat.cincinnati.v1+json".parse().unwrap(),
-        );
-        let cincinnati_v1: Vec<actix_web::http::HeaderValue> =
-            vec![
-                header::HeaderValue::from_str("application/vnd.redhat.cincinnati.v1+json").unwrap(),
-            ];
-        let version =
-            validate_content_type(&headers, cincinnati_v1.clone(), accept_default.clone()).unwrap();
-        // Server returns the response with content_type `application/vnd.redhat.cincinnati.v1+json`
-        assert_eq!(version, "application/vnd.redhat.cincinnati.v1+json");
+        // `most_recent_version` provided with header, server accepts
+        // `all_supported_versions` and defaults to `application/json`
+        headers.insert(header::ACCEPT, most_recent_version.parse().unwrap());
+        let version = validate_content_type(
+            &headers,
+            all_supported_versions.clone(),
+            accept_default.clone(),
+        )
+        .unwrap();
+        // Server returns the response with content_type `most_recent_version`
+        assert_eq!(version, most_recent_version);
 
         // Support old clients with proactive support config.
-        // `application/json` provided with header, server accepts `application/vnd.redhat.cincinnati.v1+json`
+        // `application/json` provided with header, server accepts `all_supported_versions`
         // and defaults to `application/json`
         headers.insert(header::ACCEPT, "application/json".parse().unwrap());
         let version =
-            validate_content_type(&headers, cincinnati_v1, accept_default.clone()).unwrap();
+            validate_content_type(&headers, all_supported_versions, accept_default.clone())
+                .unwrap();
         // Server returns the response with content_type `application/json`
         assert_eq!(version, "application/json");
 
