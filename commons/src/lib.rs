@@ -206,37 +206,50 @@ mod tests {
 
     #[test]
     fn test_validate_content_type() {
+        // No accept value provided with header, server accepts `application/json` and defaults to `application/json`
         let mut headers = actix_web::http::HeaderMap::new();
-
-        let content_type: Vec<actix_web::http::HeaderValue> =
-            vec![header::HeaderValue::from_str("application/json").unwrap()];
-        let version = validate_content_type(&headers, content_type.clone()).unwrap(); // if the request leaves Accept empty, we return the minimum supported cincinnati version
+        let accept_default = header::HeaderValue::from_str("application/json").unwrap();
+        let version = validate_content_type(
+            &headers,
+            vec![accept_default.clone()],
+            accept_default.clone(),
+        )
+        .unwrap(); // if the request leaves Accept empty, we return the minimum supported cincinnati version as that's the lowest version we support
         assert_eq!(version, MIN_CINCINNATI_VERSION.to_string());
 
+        // `application/json` provided with header, server accepts `application/json` and defaults to `application/json`
         headers.insert(
             header::ACCEPT,
             //"application/json, text/*; q=0.2".parse().unwrap(), // prefer JSON, but also accept any text/* after an 80% markdown in quality.  FIXME: needs a smarter parser in validate_content_type
             "application/json".parse().unwrap(),
         );
-        let version = validate_content_type(&headers, content_type.clone()).unwrap();
+        let version = validate_content_type(
+            &headers,
+            vec![accept_default.clone()],
+            accept_default.clone(),
+        )
+        .unwrap();
         assert_eq!(version, "application/json");
 
-        headers.insert(
-            // FIXME: drop once validate_content_type gets a smarter parser and the previous insert can include the text/* entry
-            header::ACCEPT,
-            "text/*".parse().unwrap(),
-        );
-        let text_type: Vec<actix_web::http::HeaderValue> =
-            vec![header::HeaderValue::from_str("text/plain").unwrap()];
-        let version = validate_content_type(&headers, text_type).unwrap();
-        assert_eq!(version, "text/*");
+        // `application/*` provided with header, server accepts `application/json` and defaults to `application/json`
+        headers.insert(header::ACCEPT, "application/*".parse().unwrap());
+        let version = validate_content_type(
+            &headers,
+            vec![accept_default.clone()],
+            accept_default.clone(),
+        )
+        .unwrap();
+        assert_eq!(version, "application/json");
 
+        // `image/png` provided with header, server accepts `application/json` and defaults to `application/json`
         let image_type: Vec<actix_web::http::HeaderValue> =
             vec![header::HeaderValue::from_str("image/png").unwrap()];
-        validate_content_type(&headers, image_type).unwrap_err();
+        //server should throw error on non-supported ACCEPT
+        validate_content_type(&headers, image_type, accept_default.clone()).unwrap_err();
 
+        //`application/vnd.redhat.cincinnati.v1+json` provided with header, server accepts
+        //`application/vnd.redhat.cincinnati.v1+json` and defaults to `application/json`
         headers.insert(
-            // FIXME: drop once validate_content_type gets a smarter parser and the previous insert can include the text/* entry
             header::ACCEPT,
             "application/vnd.redhat.cincinnati.v1+json".parse().unwrap(),
         );
@@ -244,7 +257,32 @@ mod tests {
             vec![
                 header::HeaderValue::from_str("application/vnd.redhat.cincinnati.v1+json").unwrap(),
             ];
-        let version = validate_content_type(&headers, cincinnati_v1).unwrap(); // if the request leaves Accept empty, we can return whatever we want
+        let version =
+            validate_content_type(&headers, cincinnati_v1.clone(), accept_default.clone()).unwrap();
+        // Server returns the response with content_type `application/vnd.redhat.cincinnati.v1+json`
         assert_eq!(version, "application/vnd.redhat.cincinnati.v1+json");
+
+        // `application/json` provided with header, server accepts `application/vnd.redhat.cincinnati.v1+json`
+        // and defaults to `application/json`
+        headers.insert(header::ACCEPT, "application/json".parse().unwrap());
+        let version =
+            validate_content_type(&headers, cincinnati_v1, accept_default.clone()).unwrap();
+        // Server returns the response with content_type `application/json`
+        assert_eq!(version, "application/json");
+
+        //`text/*` provided with header, server accepts `text/plain` and defaults to `text/plain`
+        headers.insert(
+            // FIXME: drop once validate_content_type gets a smarter parser and the previous insert can include the text/* entry
+            header::ACCEPT,
+            "text/*".parse().unwrap(),
+        );
+        let accept_default = header::HeaderValue::from_str("text/plain").unwrap();
+        let version = validate_content_type(
+            &headers,
+            vec![accept_default.clone()],
+            accept_default.clone(),
+        )
+        .unwrap();
+        assert_eq!(version, "text/plain");
     }
 }
