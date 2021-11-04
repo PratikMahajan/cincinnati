@@ -152,11 +152,9 @@ pub fn validate_content_type(
                 .parse()
                 .unwrap())
         } else {
-            let minimum_version: String = MIN_CINCINNATI_VERSION.to_string();
-            let accept = header::HeaderValue::to_str(header_value);
-            match accept {
+            match header::HeaderValue::to_str(header_value) {
                 Ok(a) => Ok(a.parse().unwrap()),
-                Err(_e) => Ok(minimum_version),
+                Err(_e) => Ok(MIN_CINCINNATI_VERSION.to_string()),
             }
         };
     } else {
