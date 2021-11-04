@@ -107,6 +107,7 @@ pub fn ensure_query_params(
 pub fn validate_content_type(
     headers: &HeaderMap,
     mut content_type: Vec<actix_web::http::HeaderValue>,
+    accept_default: actix_web::http::HeaderValue,
 ) -> Result<String, GraphError> {
     let header_value = match headers.get(header::ACCEPT) {
         None => {
@@ -134,17 +135,29 @@ pub fn validate_content_type(
         .collect();
 
     let mut acceptable_content_types: Vec<actix_web::http::HeaderValue> =
-        vec![wildcard, double_wildcard];
+        vec![wildcard, double_wildcard, accept_default.clone()];
     acceptable_content_types.append(&mut content_type);
     acceptable_content_types.append(&mut top_types);
 
     // FIXME: this is not a full-blown Accept parser
     if acceptable_content_types.iter().any(|c| c == header_value) {
-        let minimum_version: String = MIN_CINCINNATI_VERSION.to_string();
-        let accept = header::HeaderValue::to_str(header_value);
-        return match accept {
-            Ok(a) => Ok(a.parse().unwrap()),
-            Err(_e) => Ok(minimum_version),
+        return if header_value
+            .to_str()
+            .unwrap_or("")
+            .split("/")
+            .any(|i| i == "*")
+        {
+            Ok(header::HeaderValue::to_str(&accept_default)
+                .unwrap()
+                .parse()
+                .unwrap())
+        } else {
+            let minimum_version: String = MIN_CINCINNATI_VERSION.to_string();
+            let accept = header::HeaderValue::to_str(header_value);
+            match accept {
+                Ok(a) => Ok(a.parse().unwrap()),
+                Err(_e) => Ok(minimum_version),
+            }
         };
     } else {
         Err(GraphError::InvalidContentType)

@@ -109,11 +109,14 @@ pub async fn index(
     let path = req.uri().path();
     GRAPH_INCOMING_REQS.with_label_values(&[path]).inc();
 
-    let generic_header: Vec<actix_web::http::HeaderValue> =
-        vec![header::HeaderValue::from_static(CONTENT_TYPE)];
+    let accept_default = header::HeaderValue::from_static(CONTENT_TYPE);
 
     // Check that the client can accept media type.
-    let _content_type: String = commons::validate_content_type(req.headers(), generic_header)?;
+    let _content_type: String = commons::validate_content_type(
+        req.headers(),
+        vec![accept_default.clone()],
+        accept_default,
+    )?;
 
     // Check for required client parameters.
     let mandatory_params = &app_data.mandatory_params;

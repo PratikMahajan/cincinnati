@@ -61,18 +61,16 @@ async fn _index(
     let path = req.uri().path();
     GRAPH_INCOMING_REQS.with_label_values(&[path]).inc();
 
-    let mut generic_header: Vec<actix_web::http::HeaderValue> =
-        vec![header::HeaderValue::from_static(CONTENT_TYPE)];
+    let accept_default = header::HeaderValue::from_static(CONTENT_TYPE);
 
-    let mut version_headers: Vec<actix_web::http::HeaderValue> = commons::CINCINNATI_VERSION
+    let accept_versions: Vec<actix_web::http::HeaderValue> = commons::CINCINNATI_VERSION
         .keys()
         .map(|val| header::HeaderValue::from_static(val))
         .collect();
 
-    version_headers.append(&mut generic_header);
-
     // Check that the client can accept media type.
-    let content_type: String = commons::validate_content_type(req.headers(), version_headers)?;
+    let content_type: String =
+        commons::validate_content_type(req.headers(), accept_versions, accept_default)?;
 
     // Check for required client parameters.
     let mandatory_params = &app_data.mandatory_params;
