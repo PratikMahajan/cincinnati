@@ -19,7 +19,7 @@ extern crate serde_derive;
 pub mod plugins;
 mod conditional_edges;
 
-use crate::conditional_edges::ConditionalEdge;
+use crate::conditional_edges::*;
 
 use commons::prelude_errors::*;
 use daggy::petgraph::visit::{IntoNodeReferences, NodeRef};

@@ -4,6 +4,7 @@ use self::cincinnati::plugins::internal::graph_builder::github_openshift_seconda
 use self::cincinnati::plugins::prelude::*;
 use self::cincinnati::plugins::prelude_plugin_impl::*;
 
+use crate::conditional_edges::ConditionalUpdateEdge;
 use std::collections::HashSet;
 
 pub static DEFAULT_KEY_FILTER: &str = "io.openshift.upgrades.graph";
@@ -12,6 +13,7 @@ static SUPPORTED_VERSIONS: &[&str] = &["1.0.0", "1.1.0"];
 pub mod graph_data_model {
     //! This module contains the data types corresponding to the graph data files.
 
+    use super::cincinnati::ClusterCondition;
     use serde::de::Visitor;
     use serde::Deserialize;
     use serde::Deserializer;
@@ -21,6 +23,17 @@ pub mod graph_data_model {
     pub struct BlockedEdge {
         pub to: semver::Version,
         pub from: RegexWrapper,
+    }
+
+    #[derive(Debug, Deserialize)]
+    pub struct ConditionalEdgeYaml {
+        pub to: semver::Version,
+        pub from: RegexWrapper,
+        pub url: String,
+        pub name: String,
+        pub message: String,
+        #[serde(rename = "matchingRules")]
+        pub matching_rules: Vec<ClusterCondition>,
     }
 
     /// New type used to implement Deserialize for regex::Regex so we can use it in the `BlockedEdge` struct
@@ -478,6 +491,35 @@ impl OpenshiftSecondaryMetadataParserPlugin {
         Ok(())
     }
 
+    async fn process_conditional_edges(
+        &self,
+        graph: &mut cincinnati::Graph,
+        data_dir: &PathBuf,
+    ) -> Fallible<()> {
+        let blocked_edges_dir = data_dir.join(BLOCKED_EDGES_DIR);
+        let blocked_edges: Vec<graph_data_model::ConditionalEdgeYaml> =
+            deserialize_directory_files(
+                &blocked_edges_dir,
+                regex::Regex::new("ya+ml")?,
+                &self.settings.disallowed_errors,
+            )
+            .await
+            .context(format!(
+                "looking for conditional edges in blocked edges {:?}",
+                blocked_edges_dir
+            ))?;
+
+        debug!(
+            "Found {} valid conditional edges declarations.",
+            blocked_edges.len()
+        );
+
+        blocked_edges
+            .into_iter()
+            .try_for_each(|blocked_edge| -> Fallible<()> { Ok(()) });
+        Ok(())
+    }
+
     async fn process_channels(
         &self,
         graph: &mut cincinnati::Graph,
@@ -588,6 +630,8 @@ impl InternalPlugin for OpenshiftSecondaryMetadataParserPlugin {
         self.process_version(&data_dir).await?;
         self.process_raw_metadata(&mut io.graph, &data_dir).await?;
         self.process_blocked_edges(&mut io.graph, &data_dir).await?;
+        self.process_conditional_edges(&mut io.graph, &data_dir)
+            .await?;
         self.process_channels(&mut io.graph, &data_dir).await?;
 
         Ok(io)

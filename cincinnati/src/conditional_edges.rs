@@ -19,18 +19,19 @@ pub struct ConditionalUpdateEdge {
 }
 
 #[derive(Debug, Serialize, Deserialize, SmartDefault, Clone)]
-#[serde(default, rename_all = "camelCase")]
+#[serde(default)]
 pub struct ConditionalUpdateRisk {
     url: String,
     name: String,
     message: String,
+    #[serde(rename = "matchingRules")]
     matching_rules: Vec<ClusterCondition>,
 }
 
 #[derive(Debug, Serialize, Deserialize, SmartDefault, Clone)]
 #[serde(default)]
-struct ClusterCondition {
-    #[serde(alias = "type")]
+pub struct ClusterCondition {
+    #[serde(rename = "type")]
     condition_type: String,
     promql: PromQLClusterCondition,
 }
