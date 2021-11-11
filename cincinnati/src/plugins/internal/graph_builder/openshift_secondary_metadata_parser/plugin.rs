@@ -4,7 +4,7 @@ use self::cincinnati::plugins::internal::graph_builder::github_openshift_seconda
 use self::cincinnati::plugins::prelude::*;
 use self::cincinnati::plugins::prelude_plugin_impl::*;
 
-use crate::conditional_edges::ConditionalUpdateEdge;
+use crate::conditional_edges::{ConditionalEdge, ConditionalUpdateEdge, ConditionalUpdateRisk};
 use std::collections::HashSet;
 
 pub static DEFAULT_KEY_FILTER: &str = "io.openshift.upgrades.graph";
@@ -516,7 +516,23 @@ impl OpenshiftSecondaryMetadataParserPlugin {
 
         blocked_edges
             .into_iter()
-            .try_for_each(|blocked_edge| -> Fallible<()> { Ok(()) });
+            .try_for_each(|cey| -> Fallible<()> {
+                let ce: ConditionalEdge = ConditionalEdge {
+                    edges: vec![ConditionalUpdateEdge {
+                        from: cey.from.to_string(),
+                        to: cey.to.to_string(),
+                    }],
+                    risks: vec![ConditionalUpdateRisk {
+                        url: cey.url,
+                        name: cey.name,
+                        message: cey.message,
+                        matching_rules: cey.matching_rules,
+                    }],
+                };
+                graph.conditional_edges.append(&mut vec![ce]);
+
+                Ok(())
+            });
         Ok(())
     }
 

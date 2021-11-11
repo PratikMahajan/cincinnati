@@ -14,18 +14,18 @@ pub struct ConditionalEdge {
 #[derive(Debug, Serialize, Deserialize, SmartDefault, Clone)]
 #[serde(default)]
 pub struct ConditionalUpdateEdge {
-    from: String,
-    to: String,
+    pub from: String,
+    pub to: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, SmartDefault, Clone)]
 #[serde(default)]
 pub struct ConditionalUpdateRisk {
-    url: String,
-    name: String,
-    message: String,
+    pub url: String,
+    pub name: String,
+    pub message: String,
     #[serde(rename = "matchingRules")]
-    matching_rules: Vec<ClusterCondition>,
+    pub matching_rules: Vec<ClusterCondition>,
 }
 
 #[derive(Debug, Serialize, Deserialize, SmartDefault, Clone)]
