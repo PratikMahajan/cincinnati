@@ -497,7 +497,7 @@ impl OpenshiftSecondaryMetadataParserPlugin {
         data_dir: &PathBuf,
     ) -> Fallible<()> {
         let blocked_edges_dir = data_dir.join(BLOCKED_EDGES_DIR);
-        let blocked_edges: Vec<graph_data_model::ConditionalEdgeYaml> =
+        let conditional_edges: Vec<graph_data_model::ConditionalEdgeYaml> =
             deserialize_directory_files(
                 &blocked_edges_dir,
                 regex::Regex::new("ya+ml")?,
@@ -511,10 +511,10 @@ impl OpenshiftSecondaryMetadataParserPlugin {
 
         debug!(
             "Found {} valid conditional edges declarations.",
-            blocked_edges.len()
+            conditional_edges.len()
         );
 
-        blocked_edges
+        conditional_edges
             .into_iter()
             .try_for_each(|cey| -> Fallible<()> {
                 let ce: ConditionalEdge = ConditionalEdge {
