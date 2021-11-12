@@ -42,6 +42,7 @@ pub use std::collections::HashSet as SetImpl;
 #[cfg(any(test, feature = "test"))]
 pub use std::collections::BTreeMap as MapImpl;
 
+use regex::Regex;
 #[cfg(any(test, feature = "test"))]
 pub use std::collections::BTreeSet as SetImpl;
 
@@ -251,6 +252,14 @@ impl Graph {
             .node_references()
             .find(|nr| nr.weight().version() == version)
             .map(|nr| ReleaseId(nr.id()))
+    }
+
+    pub fn find_by_version_regex(&self, version_regex: &Regex) -> Vec<(ReleaseId, String)> {
+        self.dag
+            .node_references()
+            .filter(|nr| version_regex.is_match(nr.weight().version()))
+            .map(|nr| (ReleaseId(nr.id()), nr.weight().version().to_string()))
+            .collect()
     }
 
     /// Returns a Release for the given &ReleaseId

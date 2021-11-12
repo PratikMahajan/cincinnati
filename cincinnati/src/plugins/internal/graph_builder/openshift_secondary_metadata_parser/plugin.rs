@@ -518,10 +518,11 @@ impl OpenshiftSecondaryMetadataParserPlugin {
             .into_iter()
             .try_for_each(|cey| -> Fallible<()> {
                 let ce: ConditionalEdge = ConditionalEdge {
-                    edges: vec![ConditionalUpdateEdge {
+                    edge_regex: ConditionalUpdateEdge {
                         from: cey.from.to_string(),
                         to: cey.to.to_string(),
-                    }],
+                    },
+                    edges: vec![],
                     risks: vec![ConditionalUpdateRisk {
                         url: cey.url,
                         name: cey.name,

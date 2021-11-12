@@ -7,6 +7,8 @@ use smart_default::SmartDefault;
 #[derive(Debug, Serialize, Deserialize, SmartDefault, Clone)]
 #[serde(default)]
 pub struct ConditionalEdge {
+    #[serde(skip_serializing)]
+    pub edge_regex: ConditionalUpdateEdge,
     pub edges: Vec<ConditionalUpdateEdge>,
     pub risks: Vec<ConditionalUpdateRisk>,
 }
