@@ -32,7 +32,8 @@ use url::form_urlencoded;
 lazy_static! {
     /// list of cincinnati versions
     pub static ref CINCINNATI_VERSION: HashMap<&'static str, i32> =
-        [("application/vnd.redhat.cincinnati.v1+json", 1)]
+        [("application/vnd.redhat.cincinnati.v1+json", 1),
+         ("application/vnd.redhat.cincinnati.v2+json", 2)]
             .iter()
             .cloned()
             .collect();

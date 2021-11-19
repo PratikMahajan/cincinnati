@@ -1,5 +1,6 @@
-use self::cincinnati::plugins::prelude_plugin_impl::*;
 use crate as cincinnati;
+
+use self::cincinnati::plugins::prelude_plugin_impl::*;
 use commons::{CINCINNATI_VERSION, MIN_CINCINNATI_VERSION};
 
 #[derive(Debug, Serialize, Deserialize, SmartDefault)]
@@ -18,16 +19,31 @@ impl VersionedGraph {
             Some(version) => *version,
             None => bail!("error parsing minimum cincinnati version"),
         };
-        Ok(VersionedGraph {
-            version: match io.parameters.get("content_type") {
+        let graph_version: i32 = match io.parameters.get("content_type") {
+            None => min_version,
+            Some(v) => match CINCINNATI_VERSION.get(v.as_str()) {
+                Some(version) => *version,
                 None => min_version,
-                Some(v) => match CINCINNATI_VERSION.get(v.as_str()) {
-                    Some(version) => *version,
-                    None => min_version,
-                },
             },
-            graph: io.graph.clone(),
+        };
+        Ok(VersionedGraph {
+            version: graph_version.clone(),
+            graph: match graph_version {
+                2 => VersionedGraph::v2_graph(&io.graph),
+                _ => VersionedGraph::v1_graph(&io.graph),
+            },
         })
+    }
+
+    fn v1_graph(graph: &cincinnati::Graph) -> cincinnati::Graph {
+        cincinnati::Graph {
+            dag: graph.dag.clone(),
+            conditional_edges: None,
+        }
+    }
+
+    fn v2_graph(graph: &cincinnati::Graph) -> cincinnati::Graph {
+        graph.clone()
     }
 }
 
