@@ -156,6 +156,10 @@ objects:
                 requests:
                   cpu: ${PE_CPU_REQUEST}
                   memory: ${PE_MEMORY_REQUEST}
+              volumeMounts:
+                - name: pe-config
+                  mountPath: /etc/pe-config
+                  readOnly: true
           volumes:
             - name: secrets
               secret:
@@ -163,6 +167,9 @@ objects:
             - name: configs
               configMap:
                 name: cincinnati-configs
+            - name: pe-config
+              configMap:
+                name: cincinnati-pe-config
       triggers:
         - type: ConfigChange
   - apiVersion: v1
