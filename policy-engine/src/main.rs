@@ -31,13 +31,17 @@ use cincinnati::plugins::BoxedPlugin;
 use commons::metrics::{self, RegistryWrapper};
 use commons::prelude_errors::*;
 use commons::tracing::{get_tracer, init_tracer, set_span_tags};
+use commons::variable_logging::refresh_log_level;
 use futures::future;
 use opentelemetry::{
     trace::{mark_span_as_active, FutureExt, Tracer},
     Context as ot_context,
 };
+use parking_lot::RwLock;
 use prometheus::{labels, opts, Counter, Registry};
 use std::collections::HashSet;
+use std::sync::Arc;
+use std::thread;
 
 #[allow(dead_code)]
 /// Build info
@@ -57,17 +61,26 @@ lazy_static! {
         }
     ))
     .unwrap();
+    static ref LOG_LEVEL: Arc<RwLock<log::Level>> = Arc::new(RwLock::new(log::Level::Trace));
 }
 
 #[actix_web::main]
 async fn main() -> Result<(), Error> {
     let settings = config::AppSettings::assemble()?;
     env_logger::Builder::from_default_env()
-        .filter(Some(module_path!()), settings.verbosity)
-        .filter(Some("cincinnati"), settings.verbosity)
+        .filter(Some(module_path!()), log::LevelFilter::Trace)
+        .filter(Some("cincinnati"), log::LevelFilter::Trace)
         .init();
-    debug!("application settings:\n{:#?}", &settings);
 
+    {
+        let stv = settings.verbosity.to_level().clone();
+        thread::spawn(move || {
+            info!("moving now");
+            refresh_log_level(stv.unwrap_or_else(|| log::Level::Error), &LOG_LEVEL)
+        });
+    }
+
+    debug!("application settings:\n{:#?}", &settings);
     // Metrics service.
     let registry: &'static Registry = Box::leak(Box::new(metrics::new_registry(Some(
         METRICS_PREFIX.to_string(),

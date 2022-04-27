@@ -24,6 +24,8 @@ reqwest = "^0.11"
 thrift = "0.15"
 actix-service = "^2.0.2"
 hamcrest2 = "0.3.0"
+serde_yaml = "^0.8.23"
+parking_lot = "^0.12"
 
 [dev-dependencies]
 memchr = "^2.4"

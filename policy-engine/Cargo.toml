@@ -29,6 +29,7 @@ url = "^2.2"
 tempfile = "^3.3.0"
 custom_debug_derive = "^0.5"
 opentelemetry = "0.14.0"
+parking_lot = "^0.12"
 actix-service = "2.0.2"
 
 [build-dependencies]

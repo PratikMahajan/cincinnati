@@ -7,6 +7,8 @@ extern crate actix_web;
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate log;
 
 mod config;
 pub use crate::config::MergeOptions;
@@ -15,6 +17,7 @@ pub mod de;
 pub mod metrics;
 pub mod testing;
 pub mod tracing;
+pub mod variable_logging;
 
 mod errors;
 pub use errors::{register_metrics, Fallible, GraphError, MISSING_APPSTATE_PANIC_MSG};
