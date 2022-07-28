@@ -207,7 +207,7 @@ impl Graph {
         R: Into<Release>,
     {
         let missing_manifest_ref = String::from("none");
-        let release = release.into();
+        let mut release = release.into();
         match self.find_by_version(release.version()) {
             Some(id) => {
                 let node = self.dag.node_weight_mut(id.0).expect(EXPECT_NODE_WEIGHT);
@@ -216,12 +216,29 @@ impl Graph {
                     if release.manifestref().unwrap_or(&missing_manifest_ref)
                         != node.manifestref().unwrap_or(&missing_manifest_ref)
                     {
-                        bail!(
-                            "mismatched manifest ref for concrete release {}: {}, {}",
-                            release.version(),
-                            release.manifestref().unwrap_or(&missing_manifest_ref),
-                            node.manifestref().unwrap_or(&missing_manifest_ref)
-                        )
+                        let no_arch = "none".to_string();
+                        let release_arch = release
+                            .get_metadata_mut()
+                            .unwrap()
+                            .get("release.openshift.io/architecture")
+                            .unwrap_or(&no_arch);
+                        let node_arch = node
+                            .get_metadata_mut()
+                            .unwrap()
+                            .get("release.openshift.io/architecture")
+                            .unwrap_or(&no_arch);
+
+                        if release_arch == node_arch {
+                            bail!(
+                                "mismatched manifest ref for concrete release {}: {}, {}",
+                                release.version(),
+                                release.manifestref().unwrap_or(&missing_manifest_ref),
+                                node.manifestref().unwrap_or(&missing_manifest_ref)
+                            )
+                        }
+                        if release_arch == "multi" {
+                            return Ok(id);
+                        }
                     }
                 }
                 *node = release;
