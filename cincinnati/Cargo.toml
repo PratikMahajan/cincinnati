@@ -35,7 +35,7 @@ dkregistry = { git = "https://github.com/camallo/dkregistry-rs.git", rev = "37ac
 itertools = "^0.10"
 serde_yaml = "^0.8.23"
 prettydiff = { version = "0.6", optional = true }
-opentelemetry = "0.14.0"
+opentelemetry = "0.17.0"
 strum = "^0.24"
 strum_macros = "^0.24"
 walkdir = "2.3.1"
