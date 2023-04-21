@@ -1,0 +1,11 @@
+[package]
+name = "metadata-helper"
+version = "0.1.0"
+authors = ["Pratik Mahajan <pmahajan@redhat.com>"]
+edition = "2021"
+build = "src/build.rs"
+
+
+
+[build-dependencies]
+built = { version = "^0.5.1", features = [ "git2" ]}
