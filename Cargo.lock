@@ -2100,7 +2100,33 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 name = "metadata-helper"
 version = "0.1.0"
 dependencies = [
+ "actix",
+ "actix-cors",
+ "actix-service",
+ "actix-web",
  "built",
+ "cincinnati",
+ "commons",
+ "custom_debug_derive",
+ "env_logger",
+ "futures",
+ "hyper",
+ "lazy_static",
+ "log",
+ "memchr",
+ "mockito",
+ "opentelemetry",
+ "parking_lot 0.12.1",
+ "prometheus",
+ "semver 0.11.0",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "smart-default",
+ "structopt",
+ "tokio",
+ "toml",
+ "url",
 ]
 
 [[package]]
