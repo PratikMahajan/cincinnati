@@ -66,25 +66,6 @@ mod tests {
     }
 
     #[test]
-    fn cli_merge_settings() {
-        let upstream = "https://example.com";
-        let up_url = hyper::Uri::from_static(upstream);
-
-        let mut settings = AppSettings::default();
-        assert_eq!(
-            settings.upstream,
-            hyper::Uri::from_static("http://localhost:8080/graph")
-        );
-
-        let args = vec!["argv0", "--upstream.cincinnati.url", upstream];
-        let cli = CliOptions::from_iter_safe(args).unwrap();
-        assert_eq!(cli.upstream_cincinnati.url, Some(up_url.clone()));
-
-        settings.try_merge(cli).unwrap();
-        assert_eq!(settings.upstream, up_url);
-    }
-
-    #[test]
     fn cli_override_toml() {
         use crate::config::file::FileOptions;
         use commons::MergeOptions;

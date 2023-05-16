@@ -31,6 +31,7 @@ extern crate custom_debug_derive;
 
 mod config;
 mod status;
+mod signatures;
 
 use actix_cors::Cors;
 use actix_service::Service;
@@ -157,6 +158,10 @@ async fn main() -> Result<(), Error> {
     .client_request_timeout(settings.client_timeout)
     .bind((settings.address, settings.port))?
     .run();
+
+    // metrics endpoints has started running
+    *state.live.write() = true;
+    *state.ready.write() = true;
 
     BUILD_INFO.inc();
     future::try_join(metrics_server, main_server).await?;
