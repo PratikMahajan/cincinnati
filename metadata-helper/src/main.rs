@@ -89,20 +89,31 @@ async fn main() -> Result<(), Error> {
     ))?));
     registry.register(Box::new(BUILD_INFO.clone()))?;
 
+    let mut signatures_dir = settings.signatures_dir.clone();
+    if signatures_dir.is_empty() {
+        let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
+        signatures_dir = temp_dir.as_ref().to_str().unwrap().to_string();
+        info!("signatures data directory not provided, using {}", signatures_dir);
+    }
+
+
     // Shared state.
     let state = {
         let path_prefix = settings.path_prefix.clone();
         let live = Arc::new(RwLock::new(false));
         let ready = Arc::new(RwLock::new(false));
+        let signatures_dir = signatures_dir;
 
         AppState::new(
             path_prefix,
             live,
             ready,
             registry,
+            signatures_dir,
         )
     };
 
+    signatures::register_metrics(state.registry())?;
     let metric_state = state.clone();
     let metrics_server = HttpServer::new(move || {
         App::new()
@@ -145,9 +156,8 @@ async fn main() -> Result<(), Error> {
             )
             .app_data(actix_web::web::Data::<AppState>::new(main_state.clone()))
             .service(
-                // keeping this for backward compatibility
-                actix_web::web::resource(&format!("{}/signatures", app_prefix))
-                    .route(actix_web::web::get().to(status::serve_readiness)),
+                actix_web::web::resource(&format!("{}{}", &format!("{}/signatures", app_prefix), "/{digest}/{signature}"))
+                    .route(actix_web::web::get().to(signatures::index)),
             )
             .default_service(actix_web::web::route().to(default_response))
     })
@@ -189,6 +199,8 @@ pub struct AppState {
     live: Arc<RwLock<bool>>,
     ready: Arc<RwLock<bool>>,
     registry: &'static Registry,
+    /// path where the signatures are stored on the file system
+    signatures_dir: String,
 }
 
 
@@ -199,12 +211,14 @@ impl AppState {
         live: Arc<RwLock<bool>>,
         ready: Arc<RwLock<bool>>,
         registry: &'static Registry,
+        signatures_dir: String,
     ) -> AppState {
         AppState {
             path_prefix,
             live,
             ready,
             registry,
+            signatures_dir
         }
     }
 

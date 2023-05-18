@@ -6,6 +6,7 @@ use commons::{de_path_prefix, parse_params_set, parse_path_prefix, MergeOptions}
 use std::collections::HashSet;
 use std::net::IpAddr;
 use std::time::Duration;
+use tempfile;
 
 /// Status service options.
 #[derive(Debug, Deserialize, Serialize, StructOpt)]
@@ -24,6 +25,24 @@ impl MergeOptions<Option<StatusOptions>> for AppSettings {
         if let Some(status) = opts {
             assign_if_some!(self.status_address, status.address);
             assign_if_some!(self.status_port, status.port);
+        }
+        Ok(())
+    }
+}
+
+// Options for Signatures Service
+#[derive(Debug, Deserialize, Serialize, StructOpt)]
+pub struct SignaturesOptions {
+    /// directory where the sigatures are stored
+    #[structopt(name = "signatures_dir", long = "signatures.dir")]
+    pub dir: Option<String>,
+}
+
+impl MergeOptions<Option<SignaturesOptions>> for AppSettings {
+    fn try_merge(&mut self, opts: Option<SignaturesOptions>) -> Fallible<()> {
+
+        if let Some(signatures) = opts {
+            assign_if_some!(self.signatures_dir, signatures.dir);
         }
         Ok(())
     }
