@@ -20,7 +20,7 @@ pub async fn serve_liveness(app_data: actix_web::web::Data<AppState>) -> HttpRes
 ///
 /// Status:
 ///  * Ready (200 code): the application has been initialized and is available to accept connections.
-///  * Not Ready (503 code): no JSON graph available yet.
+///  * Not Ready (503 code): no signatures available yet.
 pub async fn serve_readiness(app_data: actix_web::web::Data<AppState>) -> HttpResponse {
     if app_data.is_ready() {
         HttpResponse::Ok().finish()

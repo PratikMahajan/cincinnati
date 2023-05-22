@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#[macro_use]
 extern crate cincinnati;
 #[macro_use]
 extern crate commons;
@@ -36,8 +35,7 @@ mod signatures;
 use actix_cors::Cors;
 use actix_service::Service;
 use actix_web::http::StatusCode;
-use actix_web::{http, middleware, App, HttpRequest, HttpResponse, HttpServer};
-use cincinnati::plugins::BoxedPlugin;
+use actix_web::{middleware, App, HttpRequest, HttpResponse, HttpServer};
 use commons::metrics::{self, HasRegistry};
 use commons::prelude_errors::*;
 use commons::tracing::{get_tracer, init_tracer, set_span_tags};
@@ -48,9 +46,7 @@ use opentelemetry::{
 };
 use parking_lot::RwLock;
 use prometheus::{labels, opts, Counter, Registry};
-use std::collections::HashSet;
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Common prefix for metadata-helper metrics.
 pub static METRICS_PREFIX: &str = "metadata-helper";
@@ -91,6 +87,9 @@ async fn main() -> Result<(), Error> {
 
     let mut signatures_dir = settings.signatures_dir.clone();
     if signatures_dir.is_empty() {
+        // create a temp data directory to store signatures.
+        // creating an empty temp dir instead of "" as we dont want to read
+        // system or other user files (for security purpose).
         let temp_dir = tempfile::tempdir().expect("failed to create tempdir");
         signatures_dir = temp_dir.as_ref().to_str().unwrap().to_string();
         info!("signatures data directory not provided, using {}", signatures_dir);
@@ -156,7 +155,7 @@ async fn main() -> Result<(), Error> {
             )
             .app_data(actix_web::web::Data::<AppState>::new(main_state.clone()))
             .service(
-                actix_web::web::resource(&format!("{}{}", &format!("{}/signatures", app_prefix), "/{digest}/{signature}"))
+                actix_web::web::resource(&format!("{}{}", &format!("{}/signatures", app_prefix), "{ALGO}/{DIGEST}/{SIGNATURE}"))
                     .route(actix_web::web::get().to(signatures::index)),
             )
             .default_service(actix_web::web::route().to(default_response))

@@ -2,11 +2,9 @@
 
 use super::AppSettings;
 use commons::prelude_errors::*;
-use commons::{de_path_prefix, parse_params_set, parse_path_prefix, MergeOptions};
-use std::collections::HashSet;
+use commons::{de_path_prefix, parse_path_prefix, MergeOptions};
 use std::net::IpAddr;
 use std::time::Duration;
-use tempfile;
 
 /// Status service options.
 #[derive(Debug, Deserialize, Serialize, StructOpt)]

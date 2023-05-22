@@ -1,15 +1,12 @@
-use std::fmt::format;
-use std::io::Read;
 use crate::AppState;
 
 use actix_files::NamedFile;
-use actix_web::{HttpRequest, HttpResponse};
+use actix_web::{HttpRequest};
 use actix_web::http::header;
 use commons::{self, Fallible, GraphError};
 use commons::tracing::get_tracer;
 use opentelemetry::{
-    trace::{mark_span_as_active, FutureExt, Tracer},
-    Context as ot_context,
+    trace::{mark_span_as_active, Tracer},
 };
 use prometheus::{histogram_opts, Histogram, IntCounterVec, Opts, Registry};
 use std::path::PathBuf;
@@ -44,7 +41,7 @@ pub(crate) async fn index(
     app_data: actix_web::web::Data<AppState>,
     digest : String,
     signature: String,
-) -> Result<HttpResponse, GraphError> {
+) -> Result<NamedFile, GraphError> {
     debug!("{}, {}", digest, signature);
     _index(&req, app_data)
         .await
@@ -55,7 +52,7 @@ pub(crate) async fn index(
 async fn _index(
     req: &HttpRequest,
     app_data: actix_web::web::Data<AppState>,
-) -> Result<HttpResponse, GraphError> {
+) -> Result<NamedFile, GraphError> {
     let span = get_tracer().start("index");
     let _active_span = mark_span_as_active(span);
 
@@ -65,31 +62,25 @@ async fn _index(
     let timer = SIGNATURES_SERVE_HIST.start_timer();
 
     let params = req.match_info();
-    let digest = params.get("digest").unwrap();
-    let signature = params.get("signature").unwrap();
+    let algo = params.get("ALGO").unwrap();
+    let digest = params.get("DIGEST").unwrap();
+    let signature = params.get("SIGNATURE").unwrap();
 
     let signatures_data_path = app_data.signatures_dir.clone();
     let mut signature_path = PathBuf::from(signatures_data_path);
-    signature_path.push(&format!("{}/{}", digest, signature));
+    signature_path.push(&format!("{}/{}/{}", algo, digest, signature));
 
     let f = NamedFile::open(signature_path);
     if f.is_err() {
+        timer.observe_duration();
         return Err(GraphError::DoesNotExist(format!(
             "signature does not exist {}",
             f.unwrap_err()
         )));
     }
 
-    let mut signature = String::new();
-    let sig_open_res = f.unwrap().read_to_string(&mut signature);
-    if sig_open_res.is_err(){
-        return Err(GraphError::FileOpenError(format!(
-            "unable to read {}",
-            sig_open_res.unwrap_err()
-        )));
-    };
     timer.observe_duration();
-    Ok(HttpResponse::Ok().body(signature))
+    Ok(f.unwrap())
 }
 
 // logs api request error

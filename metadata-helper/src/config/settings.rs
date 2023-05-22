@@ -3,7 +3,6 @@
 use super::{cli, file};
 use commons::prelude_errors::*;
 use custom_debug_derive::Debug as CustomDebug;
-use std::collections::HashSet;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 use structopt::StructOpt;
