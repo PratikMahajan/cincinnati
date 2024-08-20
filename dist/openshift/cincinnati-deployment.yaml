@@ -55,9 +55,7 @@ objects:
                     name: environment-secrets
               command:
                 - ${GB_BINARY}
-              args: [
-                "-c", "${GB_CONFIG_PATH}"
-              ]
+              args: ["-c", "${GB_CONFIG_PATH}"]
               ports:
                 - name: graph-builder
                   containerPort: ${{GB_PORT}}
@@ -129,16 +127,24 @@ objects:
                       name: cincinnati
               command:
                 - ${PE_BINARY}
-              args: [
-                "-$(PE_LOG_VERBOSITY)",
-                "--service.address", "$(ADDRESS)",
-                "--service.mandatory_client_parameters", "$(PE_MANDATORY_CLIENT_PARAMETERS)",
-                "--service.path_prefix", "${PE_PATH_PREFIX}",
-                "--service.port", "${PE_PORT}",
-                "--status.address", "$(PE_STATUS_ADDRESS)",
-                "--status.port", "${PE_STATUS_PORT}",
-                "--upstream.cincinnati.url", "$(UPSTREAM)",
-              ]
+              args:
+                [
+                  "-$(PE_LOG_VERBOSITY)",
+                  "--service.address",
+                  "$(ADDRESS)",
+                  "--service.mandatory_client_parameters",
+                  "$(PE_MANDATORY_CLIENT_PARAMETERS)",
+                  "--service.path_prefix",
+                  "${PE_PATH_PREFIX}",
+                  "--service.port",
+                  "${PE_PORT}",
+                  "--status.address",
+                  "$(PE_STATUS_ADDRESS)",
+                  "--status.port",
+                  "${PE_STATUS_PORT}",
+                  "--upstream.cincinnati.url",
+                  "$(UPSTREAM)",
+                ]
               ports:
                 - name: policy-engine
                   containerPort: ${{PE_PORT}}
@@ -174,6 +180,28 @@ objects:
                 name: cincinnati-configs
       triggers:
         - type: ConfigChange
+  - apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    metadata:
+      name: cincinnati-hpa
+      labels:
+        app: cincinnati
+    spec:
+      scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: cincinnati
+      minReplicas: ${{MIN_REPLICAS}}
+      maxReplicas: ${{MAX_REPLICAS}}
+      metrics:
+        - type: Pods
+          pods:
+            metric:
+              name: irate(cincinnati_pe_graph_incoming_requests_total[1m])
+            target:
+              type: AverageValue
+              averageValue: 55
+
   - apiVersion: v1
     kind: Service
     metadata:
@@ -284,7 +312,7 @@ parameters:
     displayName: cincinnati version
     description: cincinnati version which defaults to latest
   - name: GB_MEMORY_LIMIT
-    value: "768Mi"
+    value: "3Gi"
     displayName: "Graph-builder memory limit"
     description: "Maximum amount of memory (bytes) allowed for graph-builder (default: 523Mi)"
   - name: GB_CPU_LIMIT
@@ -300,7 +328,7 @@ parameters:
     displayName: "Policy-engine CPU limit"
     description: "Maximum amount of CPU (millicores) allowed for policy-engine (default: 750m)"
   - name: GB_MEMORY_REQUEST
-    value: "128Mi"
+    value: "1Gi"
     displayName: "Graph-builder memory request"
     description: "Requested amount of memory (bytes) allowed for graph-builder (default: 128Mi)"
   - name: GB_CPU_REQUEST
@@ -308,7 +336,7 @@ parameters:
     displayName: "Graph-builder CPU request"
     description: "Requested amount of CPU (millicores) allowed for graph-builder (default: 350m)"
   - name: PE_MEMORY_REQUEST
-    value: "128Mi"
+    value: "350Mi"
     displayName: "Policy-engine memory request"
     description: "Requested amount of memory (bytes) allowed for policy-engine (default: 128Mi)"
   - name: PE_CPU_REQUEST
@@ -395,3 +423,7 @@ parameters:
     value: '{ "CINCINNATI_GITHUB_SCRAPER_OAUTH_TOKEN_PATH": "/etc/secrets/github_token.key" }'
   - name: REPLICAS
     value: "1"
+  - name: MIN_REPLICAS
+    value: "3"
+  - name: MAX_REPLICAS
+    values: "12"
